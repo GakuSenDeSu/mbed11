@@ -70,8 +70,8 @@ int main() {
   xbee.printf("ATDL 0x140\r\n");
   reply_messange(xbee_reply, "setting DL : 0x140");
 
-  xbee.printf("ATID <PAN_ID>\r\n");
-  reply_messange(xbee_reply, "setting PAN ID : <PAN_ID>");
+  xbee.printf("ATID 0x1\r\n");
+  reply_messange(xbee_reply, "setting PAN ID : 0x1");
 
   xbee.printf("ATWR\r\n");
   reply_messange(xbee_reply, "write config");
@@ -107,16 +107,16 @@ void xbee_rx(void)
       memset(buf, 0, 256);      // clear buffer
       for(int i=0; i<255; i++) {
          char recv = xbee.getc();
-         if ( recv == '\r') {
+         if ( recv == '\r' || recv == '\n' ) {
+            pc.printf("\r\n");
             break;
          }
          buf[i] = pc.putc(recv);
       }
       RPC::call(buf, outbuf);
       pc.printf("%s\r\n", outbuf);
+      wait(0.1);
    }
-    wait(0.1);
-  }
   xbee.attach(xbee_rx_interrupt, Serial::RxIrq); // reattach interrupt
 }
 
