@@ -14,14 +14,14 @@ char = s.read(3)
 print("Set MY 0x140.")
 print(char.decode())
 
-s.write("ATDL 0x240\r\n".encode())
+s.write("ATDL 0x540\r\n".encode())
 char = s.read(3)
-print("Set DL 0x240.")
+print("Set DL 0x540.")
 print(char.decode())
 
-s.write("ATID 0x1\r\n".encode())
+s.write("ATID 0x900\r\n".encode())
 char = s.read(3)
-print("Set PAN ID 0x1.")
+print("Set PAN ID 0x900.")
 print(char.decode())
 
 s.write("ATWR\r\n".encode())
