@@ -44,6 +44,7 @@ RPCFunction rpcAcc(&getAcc, "getAcc");
 RPCFunction rpcAddr(&getAddr, "getAddr");
 
 int main() {
+   pc.baud(9600);
    uint8_t data[2] ;
    // Enable the FXOS8700Q
    FXOS8700CQ_readRegs( FXOS8700Q_CTRL_REG1, &data[1], 1);
@@ -111,7 +112,6 @@ void xbee_rx(void)
             pc.printf("\r\n");
             break;
          }
-         buf[i] = pc.putc(recv);
       }
       RPC::call(buf, outbuf);
       pc.printf("%s\r\n", outbuf);
@@ -165,11 +165,7 @@ void getAcc(Arguments *in, Reply *out) {
       acc16 -= UINT14_MAX;
    t[2] = ((float)acc16) / 4096.0f;
 
-   pc.printf("FXOS8700Q ACC: X=%1.4f(%x%x) Y=%1.4f(%x%x) Z=%1.4f(%x%x)",\
-         t[0], res[0], res[1],\
-         t[1], res[2], res[3],\
-         t[2], res[4], res[5]\
-   );
+   pc.printf("FXOS8700Q ACC: X=%1.4f Y=%1.4f Z=%1.4f\r\n",t[0], t[1], t[2]);
 }
 
 void getAddr(Arguments *in, Reply *out) {
