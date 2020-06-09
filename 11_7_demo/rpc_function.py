@@ -4,9 +4,18 @@ import time
 serdev = '/dev/ttyUSB0'
 s = serial.Serial(serdev, 9600)
 
+s.write("\n\r".encode())
+print('Start')
+time.sleep(3)
+
 s.write("+++".encode())
 char = s.read(2)
 print("Enter AT mode.")
+print(char.decode())
+
+s.write("ATRE\r\n".encode())
+char = s.read(3)
+print("Reset")
 print(char.decode())
 
 s.write("ATMY 0x140\r\n".encode())
@@ -45,26 +54,10 @@ print("Exit AT mode.")
 print(char.decode())
 
 print("start sending RPC")
+
+time.sleep(3)
+
 while True:
-    # send RPC to remote
-    s.write(bytes("\r", 'UTF-8'))
-    line=s.readline() # Read an echo string from K66F terminated with '\n' (pc.putc())
-    print(line)
-    line=s.readline() # Read an echo string from K66F terminated with '\n' (RPC reply)
-    print(line)
-    time.sleep(1)
-
-    s.write(bytes("/getAcc/run\r", 'UTF-8'))
-    line=s.readline() # Read an echo string from K66F terminated with '\n' (pc.putc())
-    print(line)
-    line=s.readline() # Read an echo string from K66F terminated with '\n' (RPC reply)
-    print(line)
-    time.sleep(1)
-
-    s.write(bytes("/getAddr/run\r", 'UTF-8'))
-    line=s.readline() # Read an echo string from K66F terminated with '\n' (pc.putc())
-    print(line)
-    line=s.readline() # Read an echo string from K66F terminated with '\n' (RPC reply)
-    print(line)
+    s.write("/getAcc/run\r".encode())
     time.sleep(1)
 s.close()

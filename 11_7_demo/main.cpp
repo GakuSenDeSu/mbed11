@@ -1,5 +1,18 @@
 #include "mbed.h"
 #include "mbed_rpc.h"
+RawSerial xbee(D12, D11);
+RawSerial pc(USBTX, USBRX);
+EventQueue queue(32 * EVENTS_EVENT_SIZE);
+Thread t1;
+
+RpcDigitalOut myled1(LED1,"myled1");
+
+//xbee
+void xbee_rx_interrupt(void);
+void xbee_rx(void);
+void reply_messange(char *xbee_reply, char *messange);
+void check_addr(char *xbee_reply, char *messenger);
+
 #include "fsl_port.h"
 #include "fsl_gpio.h"
 #define UINT14_MAX        16383
@@ -22,78 +35,19 @@
 #define FXOS8700Q_M_CTRL_REG1 0x5B
 #define FXOS8700Q_M_CTRL_REG2 0x5C
 #define FXOS8700Q_WHOAMI_VAL 0xC7
-RawSerial xbee(D12, D11);
-RawSerial pc(USBTX, USBRX);
-EventQueue queue(32 * EVENTS_EVENT_SIZE);
-Thread t;
 I2C i2c( PTD9,PTD8);
 int m_addr = FXOS8700CQ_SLAVE_ADDR1;
+
 //FXO
 void FXOS8700CQ_readRegs(int addr, uint8_t * data, int len);
 void FXOS8700CQ_writeRegs(uint8_t * data, int len);
-//xbee
-void xbee_rx_interrupt(void);
-void xbee_rx(void);
-void reply_messange(char *xbee_reply, char *messange);
-void check_addr(char *xbee_reply, char *messenger);
 
 void getAcc(Arguments *in, Reply *out);
 void getAddr(Arguments *in, Reply *out);
 
 RPCFunction rpcAcc(&getAcc, "getAcc");
+
 RPCFunction rpcAddr(&getAddr, "getAddr");
-
-int main() {
-   pc.baud(9600);
-   uint8_t data[2] ;
-   // Enable the FXOS8700Q
-   FXOS8700CQ_readRegs( FXOS8700Q_CTRL_REG1, &data[1], 1);
-   data[1] |= 0x01;
-   data[0] = FXOS8700Q_CTRL_REG1;
-   FXOS8700CQ_writeRegs(data, 2);
-   
-   //xbee
-   char xbee_reply[4];
-
-  // XBee setting
-  xbee.baud(9600);
-  xbee.printf("+++");
-  xbee_reply[0] = xbee.getc();
-  xbee_reply[1] = xbee.getc();
-  if(xbee_reply[0] == 'O' && xbee_reply[1] == 'K'){
-    pc.printf("enter AT mode.\r\n");
-    xbee_reply[0] = '\0';
-    xbee_reply[1] = '\0';
-  }
-  xbee.printf("ATMY 0x240\r\n");
-  reply_messange(xbee_reply, "setting MY : 0x240");
-
-  xbee.printf("ATDL 0x140\r\n");
-  reply_messange(xbee_reply, "setting DL : 0x140");
-
-  xbee.printf("ATID 0x1\r\n");
-  reply_messange(xbee_reply, "setting PAN ID : 0x1");
-
-  xbee.printf("ATWR\r\n");
-  reply_messange(xbee_reply, "write config");
-
-  xbee.printf("ATMY\r\n");
-  check_addr(xbee_reply, "MY");
-
-  xbee.printf("ATDL\r\n");
-  check_addr(xbee_reply, "DL");
-
-  xbee.printf("ATCN\r\n");
-  reply_messange(xbee_reply, "exit AT mode");
-  xbee.getc();
-
-  // start
-  pc.printf("start\r\n");
-  t.start(callback(&queue, &EventQueue::dispatch_forever));
-
-  // Setup a serial interrupt function of receiving data from xbee
-  xbee.attach(xbee_rx_interrupt, Serial::RxIrq);
-}
 
 void xbee_rx_interrupt(void)
 {
@@ -103,20 +57,21 @@ void xbee_rx_interrupt(void)
 
 void xbee_rx(void)
 {
-  char buf[256], outbuf[256];
-   while (xbee.readable()) {
-      memset(buf, 0, 256);      // clear buffer
-      for(int i=0; i<255; i++) {
-         char recv = xbee.getc();
-         if ( recv == '\r' || recv == '\n' ) {
-            pc.printf("\r\n");
-            break;
-         }
+  char buf[100] = {0};
+  char outbuf[100] = {0};
+  while(xbee.readable()){
+    for (int i=0; ; i++) {
+      char recv = xbee.getc();
+      if (recv == '\r') {
+         pc.printf("\r\n");
+         break;
       }
-      RPC::call(buf, outbuf);
-      pc.printf("%s\r\n", outbuf);
-      wait(0.1);
-   }
+      buf[i] = pc.putc(recv);
+    }
+    RPC::call(buf, outbuf);
+    pc.printf("%s\r\n", outbuf);
+    wait(0.1);
+  }
   xbee.attach(xbee_rx_interrupt, Serial::RxIrq); // reattach interrupt
 }
 
@@ -144,7 +99,56 @@ void check_addr(char *xbee_reply, char *messenger){
   xbee_reply[3] = '\0';
 }
 
+int main() {
+   pc.baud(9600);
+   char xbee_reply[4];
+   xbee.baud(9600);
+   xbee.printf("+++");
+   xbee_reply[0] = xbee.getc();
+   xbee_reply[1] = xbee.getc();
+   if(xbee_reply[0] == 'O' && xbee_reply[1] == 'K'){
+      pc.printf("enter AT mode.\r\n");
+      xbee_reply[0] = '\0';
+      xbee_reply[1] = '\0';
+   }
+   xbee.printf("ATMY 0x240\r\n");
+   reply_messange(xbee_reply, "setting MY : 0x240");
+   
+   xbee.printf("ATDL 0x140\r\n");
+   reply_messange(xbee_reply, "setting DL : 0x140");
+
+   xbee.printf("ATID 0x1\r\n");
+   reply_messange(xbee_reply, "setting PAN ID : 0x1");
+
+   xbee.printf("ATWR\r\n");
+   reply_messange(xbee_reply, "write config");
+
+   xbee.printf("ATMY\r\n");
+   check_addr(xbee_reply, "MY");
+
+   xbee.printf("ATDL\r\n");
+   check_addr(xbee_reply, "DL");
+
+   xbee.printf("ATCN\r\n");
+   reply_messange(xbee_reply, "exit AT mode");
+   xbee.getc();
+
+   // start
+   pc.printf("start\r\n");
+   t1.start(callback(&queue, &EventQueue::dispatch_forever));
+   
+   // Setup a serial interrupt function of receiving data from xbee
+   xbee.attach(xbee_rx_interrupt, Serial::RxIrq);
+}
+
 void getAcc(Arguments *in, Reply *out) {
+   // Enable the FXOS8700Q
+   uint8_t data[2];
+   FXOS8700CQ_readRegs( FXOS8700Q_CTRL_REG1, &data[1], 1);
+   data[1] |= 0x01;
+   data[0] = FXOS8700Q_CTRL_REG1;
+   FXOS8700CQ_writeRegs(data, 2);
+
    int16_t acc16;
    float t[3];
    uint8_t res[6];
@@ -165,7 +169,7 @@ void getAcc(Arguments *in, Reply *out) {
       acc16 -= UINT14_MAX;
    t[2] = ((float)acc16) / 4096.0f;
 
-   pc.printf("FXOS8700Q ACC: X=%1.4f Y=%1.4f Z=%1.4f\r\n",t[0], t[1], t[2]);
+   pc.printf("FXOS8700Q ACC: X=%1.4f Y=%1.4f Z=%1.4f",t[0], t[1], t[2]);
 }
 
 void getAddr(Arguments *in, Reply *out) {
