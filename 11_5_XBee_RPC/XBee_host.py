@@ -5,6 +5,9 @@ import time
 serdev = '/dev/ttyUSB0'
 s = serial.Serial(serdev, 9600)
 
+print('Start')
+time.sleep(1)
+
 s.write("+++".encode())
 char = s.read(2)
 print("Enter AT mode.")
@@ -57,13 +60,22 @@ while True:
     s.write("/myled3/write 1\r".encode())
     time.sleep(1)
 
-    s.write("/myled3/write 0\r".encode())
+    s.write("/myled1/write 0\r".encode())
+    time.sleep(1)
+
+    s.write("/myled1/write 1\r".encode())
     time.sleep(1)
 
     s.write("/myled2/write 0\r".encode())
     time.sleep(1)
 
-    s.write("/myled1/write 0\r".encode())
+    s.write("/myled2/write 1\r".encode())
+    time.sleep(1)
+
+    s.write("/myled3/write 0\r".encode())
+    time.sleep(1)
+
+    s.write("/myled3/write 0\r".encode())
     time.sleep(1)
 
 s.close()
